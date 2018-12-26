@@ -31,7 +31,7 @@ public class ColorPickerDialog extends Dialog {
     /**
      * 初始顏色黑色
      * @param context
-     * @param title 對話框標題
+     //* @param title 對話框標題
      * @param listener 回調
      */
     public ColorPickerDialog(Context context, OnColorChangedListener listener) {
@@ -42,7 +42,7 @@ public class ColorPickerDialog extends Dialog {
      *
      * @param context
      * @param initialColor 初始顏色
-     * @param title 標題
+     //* @param title 標題
      * @param listener 回調
      */
     public ColorPickerDialog(Context context, int initialColor,
@@ -62,7 +62,7 @@ public class ColorPickerDialog extends Dialog {
         int width = (int) (manager.getDefaultDisplay().getWidth() * 0.7f);
         ColorPickerView myView = new ColorPickerView(context, height, width);
         setContentView(myView);
-        //setTitle(title);
+        setTitle("Color Picker");
     }
 
     private class ColorPickerView extends View {

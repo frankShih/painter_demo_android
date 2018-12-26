@@ -1,6 +1,11 @@
 <resources>
     <string name="app_name">My Doodle</string>
     <string name="search_title">Search</string>
-    <string name="action_settings">Setting</string>
-
+    <string name="action_reset">Reset</string>
+    <string name="action_about">About</string>
+    <string name="action_exit">Exit</string>
+    <string name="enterFileName">Enter file name</string>
+    <string name="saveButtonText">Save</string>
+    <string name="cancelButtonText">Cancel</string>
+    <string name="newFolderButtonText">New folder</string>
 </resources>

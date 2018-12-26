@@ -1,30 +1,36 @@
 package com.example.han_shih.mydoodle;
 
 import android.Manifest;
-import android.content.Context;
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Toast;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -32,6 +38,11 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 100;
     private PaintView mpaintView;
+    private ColorPickerDialog mColorDialog;
+    private Dialog mDialog;
+    private ListView mFileListView;
+    private File mpath;
+    Bitmap bitmap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,26 +108,22 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        //TextView mtv = (TextView) findViewById(R.id.textview);
         Log.d("In switch", "I'm here~");
 
-        String msg = "";
         switch (item.getItemId()) {
             case R.id.action_exit:
                 //mtv.setText("About");
-                msg += "Click exit";
                 break;
             case R.id.action_about:
                 //mtv.setText("Exit");
-                msg += "Click about";
                 break;
-            case R.id.action_settings:
+            case R.id.action_reset:
                 //mtv.setText("Setting");
-                msg += "Click setting";
+                reset(mpaintView);
                 break;
         }
 
-        if(!msg.equals("")) Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+        //if(!msg.equals("")) Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
 
         return true;
     }
@@ -138,89 +145,67 @@ public class MainActivity extends AppCompatActivity {
 
     //@Override
     public void onClick(View v) {
-        //String msg = "";
-        PopupMenu popup = new PopupMenu(this, v);
-        MenuInflater inflater = popup.getMenuInflater();
-        ColorPickerDialog dialog;
+
         switch (v.getId()){
             case R.id.imageButton :                //msg += "color select";
-                dialog = new ColorPickerDialog(this, mpaintView.getPaintColor(),
+                mColorDialog = new ColorPickerDialog(this, mpaintView.getPaintColor(),
                         new ColorPickerDialog.OnColorChangedListener() {
                             @Override
                             public void colorChanged(int color) {
                                 mpaintView.setPaintColor(String.format("#%06X", (0xFFFFFF & color)));
                             }
                         });
-
-                dialog.show();
+                mColorDialog.setCancelable(true);
+                mColorDialog.setCanceledOnTouchOutside(true);
+                mColorDialog.show();
                 break;
 
             case R.id.imageButton2 :                //msg += "brush size";
-                inflater.inflate(R.menu.menu_size, popup.getMenu());
-                popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(MenuItem item) {
-                        Toast.makeText(getApplicationContext(),
-                                item.getTitle(), Toast.LENGTH_SHORT).show();
-                        return true;
+                final Dialog brushDialog = new Dialog(this);
+                //brushDialog.setTitle("Brush size:");
+                brushDialog.setContentView(R.layout.size_layout);
+                brushDialog.setCancelable(true);
+                brushDialog.setCanceledOnTouchOutside(true);
+                final SeekBar seekBar = (SeekBar) brushDialog.findViewById(R.id.seekBar);
+                seekBar.setProgress(mpaintView.getBrushSize()/2);
+
+                Button button = (Button) brushDialog.findViewById(R.id.cancel);
+                button.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        brushDialog.dismiss();
                     }
                 });
-                popup.show();
+
+                button = (Button) brushDialog.findViewById(R.id.confirm);
+                button.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        mpaintView.setBrushSize(seekBar.getProgress()*2);
+                        brushDialog.dismiss();
+                    }
+                });
+
+                brushDialog.show();
                 break;
 
             case R.id.imageButton3 :                //msg += "background color";
-                inflater.inflate(R.menu.menu_color, popup.getMenu());
-                popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(MenuItem item) {
-                        findViewById(R.id.paintView).setBackgroundColor(Color.parseColor(item.getTitleCondensed().toString()));
-                        return true;
-                    }
-                });
-                popup.show();
+                mColorDialog = new ColorPickerDialog(this, mpaintView.getPaintColor(),
+                        new ColorPickerDialog.OnColorChangedListener() {
+                            @Override
+                            public void colorChanged(int color) {
+                                findViewById(R.id.paintView).setBackgroundColor(color);
+                            }
+                        });
+                mColorDialog.setCancelable(true);
+                mColorDialog.setCanceledOnTouchOutside(true);
+                mColorDialog.show();
                 break;
 
-
             case R.id.imageButton4 :                //msg += "save to...";
-                Bitmap bitmap = viewToBitmap(findViewById(R.id.paintView));
-
-                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    // Should we show an explanation?
-                    if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setMessage("Provide permission for external storage?")
-                                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        ActivityCompat.requestPermissions(MainActivity.this,
-                                                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                                MY_PERMISSIONS_REQUEST_READ_CONTACTS);
-                                    }
-                                })
-                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        finish();
-                                    }
-                                })
-                                .show();
-
-                    } else {
-                        // No explanation needed, we can request the permission.
-                        ActivityCompat.requestPermissions(MainActivity.this,
-                                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                MY_PERMISSIONS_REQUEST_READ_CONTACTS);
-
-                        // MY_PERMISSIONS_REQUEST_READ_CONTACTS: app-defined int constant.
-                        // The callback method gets the result of the request.
-                    }
-                }
+                bitmap = viewToBitmap(findViewById(R.id.paintView));
+                checkPermission();
 
                 try {
-                    File mpath=new File("/sdcard/Download","file.jpg");
+                    mpath=new File("/sdcard/Download","file.jpg");
                     Log.d("Print the path", "/file.png");
                     FileOutputStream output = new FileOutputStream(mpath);
 
@@ -233,43 +218,26 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("IOException", "/file.png");
                     e.printStackTrace();
                 }
-
                 break;
 
-            case R.id.imageButton5 :
-                //msg += "load from...";
-                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    // Should we show an explanation?
-                    if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
-                            Manifest.permission.READ_EXTERNAL_STORAGE)) {
-
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setMessage("Provide permission for external storage?")
-                                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        ActivityCompat.requestPermissions(MainActivity.this,
-                                                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                                                MY_PERMISSIONS_REQUEST_READ_CONTACTS);
-                                    }
-                                })
-                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        finish();
-                                    }
-                                })
-                                .show();
-
-                    } else {
-                        ActivityCompat.requestPermissions(MainActivity.this,
-                                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                                MY_PERMISSIONS_REQUEST_READ_CONTACTS);
-                    }
+            case R.id.imageButton5 :                //msg += "load from...";
+                checkPermission();
+                bitmap = null;
+                mpath=new File("/sdcard/Download","file.jpg");
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                try {
+                    bitmap = BitmapFactory.decodeStream(new FileInputStream(mpath), null, options);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
                 }
 
-
+                BitmapDrawable bd = new BitmapDrawable(mpaintView.getContext().getResources(), bitmap);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                    mpaintView.setBackground(bd);
+                } else {
+                    mpaintView.setBackgroundDrawable(bd);
+                }
 
                 break;
         }
@@ -318,5 +286,49 @@ public class MainActivity extends AppCompatActivity {
             // permissions this app might request
         }
     }
+
+    public void checkPermission(){
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+
+                new AlertDialog.Builder(MainActivity.this)
+                        .setMessage("Provide permission for external storage?")
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                ActivityCompat.requestPermissions(MainActivity.this,
+                                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                        MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+                            }
+                        })
+                        .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                finish();
+                            }
+                        })
+                        .show();
+
+            } else {
+                // No explanation needed, we can request the permission.
+                ActivityCompat.requestPermissions(MainActivity.this,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+
+                // MY_PERMISSIONS_REQUEST_READ_CONTACTS: app-defined int constant.
+                // The callback method gets the result of the request.
+            }
+        }
+    }
+
+    void reset(PaintView view){
+        view.drawCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
+        view.setBackgroundColor(0xFF000000);
+
+    }
+
 
 }

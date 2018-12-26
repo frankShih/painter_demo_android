@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.PorterDuff;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,15 +22,20 @@ public class PaintView extends View{
     //drawing and canvas paint
     private Paint drawPaint, canvasPaint;
     //initial color
-    private int paintColor = 0xFF660000;
+    private int paintColor = 0xFF000000;
+    private int brushSize = 1;
     //canvas
-    private Canvas drawCanvas;
+    Canvas drawCanvas;
     //canvas bitmap
     private Bitmap canvasBitmap;
 
     public PaintView(Context context, AttributeSet attrs){
         super(context, attrs);
         setupDrawing();
+    }
+
+    void reset_canvas(){
+        drawCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
     }
 
     int getPaintColor(){
@@ -48,7 +54,12 @@ public class PaintView extends View{
         drawPaint.setColor(colorCode);
     }
 
+    int getBrushSize(){
+        return brushSize;
+    }
+
     void setBrushSize(int b_size){
+        brushSize = b_size;
         drawPaint.setStrokeWidth(b_size);
     }
 
@@ -57,8 +68,9 @@ public class PaintView extends View{
         drawPath = new Path();
         drawPaint = new Paint();
         drawPaint.setColor(paintColor);
+        drawPaint.setStrokeWidth(brushSize);
         drawPaint.setAntiAlias(true);
-        drawPaint.setStrokeWidth(20);
+        //drawPaint.setStrokeWidth(20);
         drawPaint.setStyle(Paint.Style.STROKE);
         drawPaint.setStrokeJoin(Paint.Join.ROUND);
         drawPaint.setStrokeCap(Paint.Cap.ROUND);
